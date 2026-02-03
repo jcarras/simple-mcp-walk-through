@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Architecture Diagram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <style>
+        #cy {
+            width: 100%;
+            height: 600px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto p-6">
+        <!-- Header with Controls -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-2">
+            <div class="flex items-center justify-between gap-4">
+                <!-- Title -->
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-semibold text-gray-900">Model Context Protocol (MCP)</h1>
+                </div>
+
+                <!-- Step Info -->
+                <div id="step-info" class="hidden flex-1 text-center px-4">
+                    <div id="step-title" class="text-sm font-semibold text-gray-900"></div>
+                    <div id="step-description" class="text-xs text-gray-600"></div>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <button
+                        id="reset-btn"
+                        onclick="resetAnimation()"
+                        class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        Reset
+                    </button>
+                    <button
+                        id="prev-btn"
+                        onclick="previousStep()"
+                        disabled
+                        class="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        ←
+                    </button>
+                    <button
+                        id="next-btn"
+                        onclick="nextStep()"
+                        class="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        →
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <!-- Diagram -->
+            <div id="cy" class="bg-gray-50"></div>
+
+            <!-- Legend -->
+            <div class="border-t border-gray-200 p-6 bg-gray-50">
+                <h3 class="text-sm font-semibold text-gray-900 mb-4">Component Types</h3>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-blue-600 border border-gray-300"></div>
+                        <span class="text-sm text-gray-700">Your AI App</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-pink-500 border border-gray-300"></div>
+                        <span class="text-sm text-gray-700">LLM</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-sky-500 border border-gray-300"></div>
+                        <span class="text-sm text-gray-700">MCP Servers</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-green-500 border border-gray-300"></div>
+                        <span class="text-sm text-gray-700">External Services</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded bg-purple-400 border border-gray-300"></div>
+                        <span class="text-sm text-gray-700">MCP Protocol</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cy = cytoscape({
+            container: document.getElementById('cy'),
+            
+            elements: [
+                // Nodes
+                { data: { id: 'app', label: 'Your AI App', type: 'client' } },
+                { data: { id: 'model', label: 'LLM', type: 'llm' } },
+                { data: { id: 'slack-server', label: 'Slack MCP Server', type: 'server' } },
+                { data: { id: 'db-server', label: 'Database\nMCP Server', type: 'server' } },
+                { data: { id: 'slack-api', label: 'Slack API', type: 'service' } },
+                { data: { id: 'database', label: 'PostgreSQL', type: 'service' } },
+                
+                // Edges - App to model
+                { data: { source: 'app', target: 'model', label: '1. Send prompt + tools', edgeType: 'app-llm' } },
+                { data: { source: 'model', target: 'app', label: '2. Tool call request', edgeType: 'app-llm' } },
+                
+                // Edges - App to MCP Servers (via MCP Protocol)
+                { data: { source: 'app', target: 'slack-server', label: 'connect() • listTools() • callTool()', edgeType: 'mcp' } },
+                { data: { source: 'app', target: 'db-server', label: 'connect() • listTools() • callTool()', edgeType: 'mcp' } },
+                
+                // Edges - MCP Servers to External Services
+                { data: { source: 'slack-server', target: 'slack-api', label: 'API calls', edgeType: 'service' } },
+                { data: { source: 'db-server', target: 'database', label: 'SQL queries', edgeType: 'service' } },
+            ],
+            
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'text-wrap': 'wrap',
+                        'text-max-width': '100px',
+                        'font-size': '14px',
+                        'font-weight': 'bold',
+                        'width': '120px',
+                        'height': '120px',
+                        'border-width': 3,
+                        'border-color': '#fff',
+                        'color': '#fff',
+                        'text-outline-color': '#000',
+                        'text-outline-width': 0.5
+                    }
+                },
+                {
+                    selector: 'node[type="client"]',
+                    style: {
+                        'background-color': '#667eea',
+                        'shape': 'round-rectangle'
+                    }
+                },
+                {
+                    selector: 'node[type="llm"]',
+                    style: {
+                        'background-color': '#fa709a',
+                        'shape': 'round-hexagon'
+                    }
+                },
+                {
+                    selector: 'node[type="server"]',
+                    style: {
+                        'background-color': '#4facfe',
+                        'shape': 'round-rectangle'
+                    }
+                },
+                {
+                    selector: 'node[type="service"]',
+                    style: {
+                        'background-color': '#43e97b',
+                        'shape': 'ellipse'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 3,
+                        'line-color': '#adb5bd',
+                        'target-arrow-color': '#adb5bd',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        'label': 'data(label)',
+                        'font-size': '14px',
+                        'font-family': 'monospace',
+                        'text-rotation': 'autorotate',
+                        'text-margin-y': -15,
+                        'color': '#2c3e50',
+                        'text-background-color': '#ffffff',
+                        'text-background-opacity': 1,
+                        'text-background-padding': '8px',
+                        'text-border-width': 1,
+                        'text-border-color': '#dee2e6',
+                        'text-border-opacity': 0.5
+                    }
+                },
+                {
+                    selector: 'edge[edgeType="mcp"]',
+                    style: {
+                        'width': 6,
+                        'line-color': '#f093fb',
+                        'target-arrow-color': '#f093fb',
+                        'font-size': '13px',
+                        'font-weight': 'bold',
+                        'font-family': 'monospace',
+                        'color': '#6a1b9a',
+                        'text-background-color': '#fce4ec',
+                        'text-background-opacity': 1,
+                        'text-background-padding': '10px',
+                        'text-border-width': 2,
+                        'text-border-color': '#f093fb',
+                        'text-border-opacity': 0.6,
+                        'line-style': 'solid'
+                    }
+                },
+                {
+                    selector: 'edge[edgeType="app-llm"]',
+                    style: {
+                        'width': 4,
+                        'line-color': '#667eea',
+                        'target-arrow-color': '#667eea',
+                        'font-size': '13px',
+                        'font-weight': '600',
+                        'color': '#1a237e',
+                        'text-background-color': '#e8eaf6',
+                        'text-background-opacity': 1,
+                        'text-background-padding': '8px',
+                        'text-border-width': 1,
+                        'text-border-color': '#667eea',
+                        'text-border-opacity': 0.4
+                    }
+                },
+                {
+                    selector: 'edge[edgeType="service"]',
+                    style: {
+                        'width': 3,
+                        'line-color': '#90a4ae',
+                        'target-arrow-color': '#90a4ae',
+                        'font-size': '12px',
+                        'color': '#455a64'
+                    }
+                }
+            ],
+            
+            layout: {
+                name: 'preset',
+                positions: {
+                    'app': { x: 100, y: 250 },
+                    'model': { x: 100, y: 550 },
+                    'slack-server': { x: 550, y: 120 },
+                    'db-server': { x: 550, y: 520 },
+                    'slack-api': { x: 1000, y: 120 },
+                    'database': { x: 1000, y: 520 }
+                },
+                fit: true,
+                padding: 100
+            }
+        });
+
+        // Add interactivity
+        cy.on('tap', 'node', function(evt){
+            const node = evt.target;
+            node.animate({
+                style: { 
+                    'width': '140px',
+                    'height': '140px'
+                }
+            }, {
+                duration: 200,
+                complete: function() {
+                    node.animate({
+                        style: { 
+                            'width': '120px',
+                            'height': '120px'
+                        }
+                    }, {
+                        duration: 200
+                    });
+                }
+            });
+        });
+
+        // Highlight connected nodes on hover
+        cy.on('mouseover', 'node', function(evt){
+            const node = evt.target;
+            node.neighborhood().addClass('highlighted');
+            node.addClass('highlighted');
+        });
+
+        cy.on('mouseout', 'node', function(evt){
+            cy.elements().removeClass('highlighted');
+        });
+
+        cy.style()
+            .selector('.highlighted')
+            .style({
+                'border-width': 5,
+                'border-color': '#ffd700'
+            })
+            .selector('edge.highlighted')
+            .style({
+                'width': 8,
+                'line-color': '#ffd700',
+                'target-arrow-color': '#ffd700',
+                'z-index': 9999
+            })
+            .update();
+
+        // Animation system
+        let currentStep = -1;
+
+        const steps = [
+            {
+                title: "Step 1: Your AI app starts up",
+                show: ['app'],
+                highlight: ['app'],
+                description: "Your application needs to integrate with external services"
+            },
+            {
+                title: "Step 2: Connect to MCP servers",
+                show: ['app', 'slack-server', 'db-server'],
+                highlight: ['slack-server', 'db-server'],
+                edges: ['app-slack-server', 'app-db-server'],
+                highlightEdges: ['app-slack-server', 'app-db-server'],
+                description: "Use MCP protocol to connect() to each server"
+            },
+            {
+                title: "Step 3: Discover available tools",
+                show: ['app', 'slack-server', 'db-server'],
+                highlight: ['app'],
+                edges: ['app-slack-server', 'app-db-server'],
+                highlightEdges: ['app-slack-server', 'app-db-server'],
+                description: "Call listTools() to see what each server provides"
+            },
+            {
+                title: "Step 4: Send prompt to model with tools",
+                show: ['app', 'model', 'slack-server', 'db-server'],
+                highlight: ['app', 'model'],
+                edges: ['app-model'],
+                highlightEdges: ['app-model'],
+                description: "Your app passes the discovered tools to model"
+            },
+            {
+                title: "Step 5: model decides to use a tool",
+                show: ['app', 'model', 'slack-server', 'db-server'],
+                highlight: ['model', 'app'],
+                edges: ['model-app'],
+                highlightEdges: ['model-app'],
+                description: "model responds with a tool call request"
+            },
+            {
+                title: "Step 6: Execute tool via MCP",
+                show: ['app', 'model', 'slack-server', 'db-server'],
+                highlight: ['app', 'slack-server'],
+                edges: ['app-slack-server'],
+                highlightEdges: ['app-slack-server'],
+                description: "Your app calls callTool() through MCP protocol"
+            },
+            {
+                title: "Step 7: MCP server handles the API integration",
+                show: ['app', 'model', 'slack-server', 'db-server', 'slack-api'],
+                highlight: ['slack-server', 'slack-api'],
+                edges: ['slack-server-slack-api'],
+                highlightEdges: ['slack-server-slack-api'],
+                description: "The MCP server makes the actual Slack API call for you"
+            },
+            {
+                title: "Complete! All components working together",
+                show: ['app', 'model', 'slack-server', 'db-server', 'slack-api', 'database'],
+                highlight: [],
+                edges: ['app-model', 'model-app', 'app-slack-server', 'app-db-server', 'slack-server-slack-api', 'db-server-database'],
+                highlightEdges: ['slack-server-slack-api', 'db-server-database'],
+                description: "MCP provides a standard way to integrate with any service"
+            }
+        ];
+
+        function showStep(stepIndex) {
+            if (stepIndex < 0 || stepIndex >= steps.length) return;
+            
+            const step = steps[stepIndex];
+            currentStep = stepIndex;
+
+            // Hide all nodes and edges
+            cy.elements().style('opacity', 0.1);
+            cy.elements().removeClass('highlighted');
+
+            // Show specified nodes
+            step.show.forEach(nodeId => {
+                cy.getElementById(nodeId).style('opacity', 1);
+            });
+
+            // Show specified edges
+            if (step.edges) {
+                step.edges.forEach(edgeSpec => {
+                    // Find edges by matching the edge spec format: "source-target"
+                    cy.edges().forEach(edge => {
+                        const source = edge.data('source');
+                        const target = edge.data('target');
+                        const edgeId = `${source}-${target}`;
+                        if (edgeId === edgeSpec) {
+                            edge.style('opacity', 1);
+                        }
+                    });
+                });
+            }
+
+            // Highlight nodes
+            if (step.highlight) {
+                step.highlight.forEach(nodeId => {
+                    cy.getElementById(nodeId).addClass('highlighted');
+                });
+            }
+
+            // Highlight edges
+            if (step.highlightEdges) {
+                step.highlightEdges.forEach(edgeSpec => {
+                    cy.edges().forEach(edge => {
+                        const source = edge.data('source');
+                        const target = edge.data('target');
+                        const edgeId = `${source}-${target}`;
+                        if (edgeId === edgeSpec) {
+                            edge.addClass('highlighted');
+                        }
+                    });
+                });
+            }
+
+            // Update step info
+            const stepInfo = document.getElementById('step-info');
+            const stepTitle = document.getElementById('step-title');
+            const stepDescription = document.getElementById('step-description');
+            
+            stepInfo.classList.remove('hidden');
+            stepTitle.textContent = step.title;
+            stepDescription.textContent = step.description;
+
+            // Update button states
+            document.getElementById('prev-btn').disabled = stepIndex === 0;
+            document.getElementById('next-btn').disabled = stepIndex === steps.length - 1;
+        }
+
+        function resetAnimation() {
+            currentStep = -1;
+            cy.elements().style('opacity', 1);
+            cy.elements().removeClass('highlighted');
+            document.getElementById('step-info').classList.add('hidden');
+            document.getElementById('prev-btn').disabled = true;
+            document.getElementById('next-btn').disabled = false;
+        }
+
+        function nextStep() {
+            if (currentStep < steps.length - 1) {
+                showStep(currentStep + 1);
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 0) {
+                showStep(currentStep - 1);
+            }
+        }
+
+        // Start with everything visible
+        resetAnimation();
+    </script>
+</body>
+</html>
