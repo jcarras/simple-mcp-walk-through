@@ -108,7 +108,11 @@
                 // Edges - App to MCP Servers (via MCP Protocol)
                 { data: { source: 'app', target: 'slack-server', label: 'connect() • listTools() • callTool()', edgeType: 'mcp' } },
                 { data: { source: 'app', target: 'db-server', label: 'connect() • listTools() • callTool()', edgeType: 'mcp' } },
-                
+
+                // Edges - MCP Servers back to App (return results)
+                { data: { source: 'slack-server', target: 'app', label: 'tool result', edgeType: 'mcp' } },
+                { data: { source: 'db-server', target: 'app', label: 'tool result', edgeType: 'mcp' } },
+
                 // Edges - MCP Servers to External Services
                 { data: { source: 'slack-server', target: 'slack-api', label: 'API calls', edgeType: 'service' } },
                 { data: { source: 'db-server', target: 'database', label: 'SQL queries', edgeType: 'service' } },
@@ -235,7 +239,7 @@
             layout: {
                 name: 'preset',
                 positions: {
-                    'app': { x: 100, y: 250 },
+                    'app': { x: 100, y: 130 },
                     'model': { x: 100, y: 550 },
                     'slack-server': { x: 550, y: 120 },
                     'db-server': { x: 550, y: 520 },
@@ -294,10 +298,17 @@
                 'target-arrow-color': '#ffd700',
                 'z-index': 9999
             })
+            .selector('.animated-edge')
+            .style({
+                'line-style': 'dashed',
+                'line-dash-pattern': [10, 5],
+                'line-dash-offset': 0
+            })
             .update();
 
         // Animation system
         let currentStep = -1;
+        let animationInterval = null;
 
         const steps = [
             {
@@ -355,71 +366,118 @@
                 description: "The MCP server makes the actual Slack API call for you"
             },
             {
+                title: "Step 8: Results flow back to your app",
+                show: ['app', 'model', 'slack-server', 'db-server', 'slack-api'],
+                highlight: ['app', 'slack-server'],
+                edges: ['slack-server-app', 'slack-server-slack-api'],
+                highlightEdges: ['slack-server-app'],
+                description: "MCP server returns the result, your app sends it back to the model"
+            },
+            {
                 title: "Complete! All components working together",
                 show: ['app', 'model', 'slack-server', 'db-server', 'slack-api', 'database'],
                 highlight: [],
-                edges: ['app-model', 'model-app', 'app-slack-server', 'app-db-server', 'slack-server-slack-api', 'db-server-database'],
-                highlightEdges: ['slack-server-slack-api', 'db-server-database'],
+                edges: ['app-model', 'model-app', 'app-slack-server', 'app-db-server', 'slack-server-app', 'db-server-app', 'slack-server-slack-api', 'db-server-database'],
                 description: "MCP provides a standard way to integrate with any service"
             }
         ];
 
+        function stopAnimations() {
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+            }
+            cy.edges().removeClass('animated-edge');
+        }
+
+        function animateEdges(edges) {
+            let offset = 0;
+            edges.forEach(edge => edge.addClass('animated-edge'));
+
+            animationInterval = setInterval(() => {
+                offset = (offset + 2) % 30;
+                edges.forEach(edge => {
+                    edge.style('line-dash-offset', -offset);
+                });
+            }, 50);
+        }
+
         function showStep(stepIndex) {
             if (stepIndex < 0 || stepIndex >= steps.length) return;
-            
+
+            stopAnimations();
+
             const step = steps[stepIndex];
             currentStep = stepIndex;
 
-            // Hide all nodes and edges
-            cy.elements().style('opacity', 0.1);
+            // Animate fade out for all elements
+            cy.elements().animate({
+                style: { 'opacity': 0.1 }
+            }, { duration: 300 });
             cy.elements().removeClass('highlighted');
 
-            // Show specified nodes
-            step.show.forEach(nodeId => {
-                cy.getElementById(nodeId).style('opacity', 1);
-            });
+            // After fade out, show and animate new elements
+            setTimeout(() => {
+                // Show and animate specified nodes
+                const nodesToShow = [];
+                step.show.forEach(nodeId => {
+                    const node = cy.getElementById(nodeId);
+                    node.animate({
+                        style: { 'opacity': 1 }
+                    }, { duration: 400 });
+                    nodesToShow.push(node);
+                });
 
-            // Show specified edges
-            if (step.edges) {
-                step.edges.forEach(edgeSpec => {
-                    // Find edges by matching the edge spec format: "source-target"
-                    cy.edges().forEach(edge => {
-                        const source = edge.data('source');
-                        const target = edge.data('target');
-                        const edgeId = `${source}-${target}`;
-                        if (edgeId === edgeSpec) {
-                            edge.style('opacity', 1);
-                        }
+                // Show specified edges with animation
+                const edgesToAnimate = [];
+                if (step.edges) {
+                    step.edges.forEach(edgeSpec => {
+                        cy.edges().forEach(edge => {
+                            const source = edge.data('source');
+                            const target = edge.data('target');
+                            const edgeId = `${source}-${target}`;
+                            if (edgeId === edgeSpec) {
+                                edge.animate({
+                                    style: { 'opacity': 1 }
+                                }, { duration: 400 });
+                            }
+                        });
                     });
-                });
-            }
+                }
 
-            // Highlight nodes
-            if (step.highlight) {
-                step.highlight.forEach(nodeId => {
-                    cy.getElementById(nodeId).addClass('highlighted');
-                });
-            }
-
-            // Highlight edges
-            if (step.highlightEdges) {
-                step.highlightEdges.forEach(edgeSpec => {
-                    cy.edges().forEach(edge => {
-                        const source = edge.data('source');
-                        const target = edge.data('target');
-                        const edgeId = `${source}-${target}`;
-                        if (edgeId === edgeSpec) {
-                            edge.addClass('highlighted');
-                        }
+                // Highlight nodes
+                if (step.highlight && step.highlight.length > 0) {
+                    step.highlight.forEach(nodeId => {
+                        const node = cy.getElementById(nodeId);
+                        node.addClass('highlighted');
                     });
-                });
-            }
+                }
+
+                // Highlight and animate edges
+                if (step.highlightEdges) {
+                    const animatedEdges = [];
+                    step.highlightEdges.forEach(edgeSpec => {
+                        cy.edges().forEach(edge => {
+                            const source = edge.data('source');
+                            const target = edge.data('target');
+                            const edgeId = `${source}-${target}`;
+                            if (edgeId === edgeSpec) {
+                                edge.addClass('highlighted');
+                                animatedEdges.push(edge);
+                            }
+                        });
+                    });
+                    if (animatedEdges.length > 0) {
+                        animateEdges(animatedEdges);
+                    }
+                }
+            }, 300);
 
             // Update step info
             const stepInfo = document.getElementById('step-info');
             const stepTitle = document.getElementById('step-title');
             const stepDescription = document.getElementById('step-description');
-            
+
             stepInfo.classList.remove('hidden');
             stepTitle.textContent = step.title;
             stepDescription.textContent = step.description;
@@ -430,9 +488,13 @@
         }
 
         function resetAnimation() {
+            stopAnimations();
             currentStep = -1;
-            cy.elements().style('opacity', 1);
+            cy.elements().animate({
+                style: { 'opacity': 1 }
+            }, { duration: 400 });
             cy.elements().removeClass('highlighted');
+            cy.edges().style('line-dash-offset', 0);
             document.getElementById('step-info').classList.add('hidden');
             document.getElementById('prev-btn').disabled = true;
             document.getElementById('next-btn').disabled = false;
@@ -450,8 +512,8 @@
             }
         }
 
-        // Start with everything visible
-        resetAnimation();
+        // Start on step 1
+        showStep(0);
     </script>
 </body>
 </html>
