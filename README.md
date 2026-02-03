@@ -102,3 +102,5 @@ For tools that support MCP, you don't have to write API integration. You don't d
 ## Architecture
 
 ![MCP Architecture](mcp-walkthrough.png)
+
+[View the interactive walkthrough](index.html)
