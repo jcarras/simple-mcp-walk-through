@@ -334,7 +334,15 @@
                 description: "Call listTools() to see what each server provides"
             },
             {
-                title: "Step 4: Send prompt to model with tools",
+                title: "Step 4: Receive tools list",
+                show: ['app', 'slack-server', 'db-server'],
+                highlight: ['app'],
+                edges: ['slack-server-app', 'db-server-app'],
+                highlightEdges: ['slack-server-app', 'db-server-app'],
+                description: "MCP servers return their available tools to your app"
+            },
+            {
+                title: "Step 5: Send prompt to model with tools",
                 show: ['app', 'model', 'slack-server', 'db-server'],
                 highlight: ['app', 'model'],
                 edges: ['app-model'],
@@ -342,15 +350,15 @@
                 description: "Your app passes the discovered tools to model"
             },
             {
-                title: "Step 5: model decides to use a tool",
+                title: "Step 6: Model decides to use a tool",
                 show: ['app', 'model', 'slack-server', 'db-server'],
                 highlight: ['model', 'app'],
                 edges: ['model-app'],
                 highlightEdges: ['model-app'],
-                description: "model responds with a tool call request"
+                description: "Model responds with a tool call request"
             },
             {
-                title: "Step 6: Execute tool via MCP",
+                title: "Step 7: Execute tool via MCP",
                 show: ['app', 'model', 'slack-server', 'db-server'],
                 highlight: ['app', 'slack-server'],
                 edges: ['app-slack-server'],
@@ -358,7 +366,7 @@
                 description: "Your app calls callTool() through MCP protocol"
             },
             {
-                title: "Step 7: MCP server handles the API integration",
+                title: "Step 8: MCP server handles the API integration",
                 show: ['app', 'model', 'slack-server', 'db-server', 'slack-api'],
                 highlight: ['slack-server', 'slack-api'],
                 edges: ['slack-server-slack-api'],
@@ -366,7 +374,7 @@
                 description: "The MCP server makes the actual Slack API call for you"
             },
             {
-                title: "Step 8: Results flow back to your app",
+                title: "Step 9: Results flow back to your app",
                 show: ['app', 'model', 'slack-server', 'db-server', 'slack-api'],
                 highlight: ['app', 'slack-server'],
                 edges: ['slack-server-app', 'slack-server-slack-api'],
