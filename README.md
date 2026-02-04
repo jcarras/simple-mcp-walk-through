@@ -103,4 +103,4 @@ For tools that support MCP, you don't have to write API integration. You don't d
 
 ![MCP Architecture](architecture.png)
 
-[View the interactive walkthrough](index.html)
+[View the interactive walkthrough](https://jcarras.github.io/simple-mcp-walk-through)
